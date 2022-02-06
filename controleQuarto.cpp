@@ -145,7 +145,8 @@ void setupWiFi()
     Serial.printf(".");
     delay(250);
   }
-  digitalWrite(wifiLed, HIGH); //Quando conectar a internet o led acende.
+  //Quando conectar a internet o led acende.     
+  digitalWrite(wifiLed, HIGH);
   Serial.printf("connected!\r\n[WiFi]: IP-Address is %s\r\n", WiFi.localIP().toString().c_str());
 }
 
@@ -166,9 +167,8 @@ void setup()
 {
   Serial.begin(BAUD_RATE);
 
-  pinMode(wifiLed, OUTPUT);
-  digitalWrite(wifiLed, LOW); //definir led indicador de conexão com a internet desligado.
-
+  pinMode(wifiLed, OUTPUT); //definir led indicador como saída.
+ 
   setupRelays();
   setupFlipSwitches();
   setupWiFi();
