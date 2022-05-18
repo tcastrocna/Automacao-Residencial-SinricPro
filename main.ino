@@ -28,15 +28,15 @@
 
 // Definir as entradas no esp32.
 //Saídas dos dispositivos
-#define RelayPin1 18  //Iluminação 1 
-#define RelayPin2 19  //Iluminação 2
-#define RelayPin3 23 //Ventilador 
+#define RelayPin1 18  //Rele1 
+#define RelayPin2 19  //Rele2
+#define RelayPin3 23 //Rele3
 #define RelayPin4 05 //Null
 
 //Botões físicos
-#define SwitchPin1 13  //Botão físico da iluminação 1
-#define SwitchPin2 12  // Botão físico da iluminação 2
-#define SwitchPin3 14  //Botão fisico do Ventilador
+#define SwitchPin1 13  //Botão físico do Rele1
+#define SwitchPin2 12  // Botão físico do Rele2
+#define SwitchPin3 14  //Botão fisico do Rele3
 #define SwitchPin4 27  //Null
 
 #define wifiLed   16   //Led indicador de rede, acender ao conectar a rede.
