@@ -21,9 +21,9 @@
 #define APP_SECRET    "6938219c-a846-4a3c-86da-56d82239caf2-779d26e1-eae4-4b1f-a4d5-309ef6d48a8b"  //Senha do app fornecida pela plataforma
 
 //Definir os IDs de cada Dispositivo, neste caso tem apenas três dispositivos, pois está no plano gratuito.
-#define device_ID_1   "6105ebeebab19d405818e8f8" //Iluminação 1
-#define device_ID_2   "610858d3fc89cf405088d0ce" //Iluminação 2
-#define device_ID_3   "6105ecb4bab19d405818e900" //Ventilador 
+#define device_ID_1   "6105ebeebab19d405818e8f8" //Rele1
+#define device_ID_2   "610858d3fc89cf405088d0ce" //Rele2
+#define device_ID_3   "6105ecb4bab19d405818e900" //Rele3 
 #define device_ID_4   "xxxxxxxxxxxxxxxxxxxxxxxx" //Null
 
 // Definir as entradas no esp32.
