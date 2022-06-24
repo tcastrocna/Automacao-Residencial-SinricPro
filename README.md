@@ -11,6 +11,5 @@ Neste caso foi realizado testes para controle de iluminação e ventilador de um
 
 **Bibliotecas Utilizadas:**
 
-🗂️
+🗂️SinricPRO - [version 2.9.16⬇️](https://downloads.arduino.cc/libraries/github.com/sinricpro/SinricPro-2.9.16.zip)
 
-🗂️
