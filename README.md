@@ -14,6 +14,4 @@ Este código permite controlar dispositivos  através da plataforma Sinric Pro, 
 - 📁ArduinoJson - [version 6.19.4⬇️](https://downloads.arduino.cc/libraries/github.com/bblanchon/ArduinoJson-6.19.4.zip)
 - 📁WebSockets - [version 2.3.6⬇️](https://downloads.arduino.cc/libraries/github.com/Links2004/WebSockets-2.3.6.zip)
 
-**⛔Problemas para resolver**
-- [ ] Não funciona em offline.
 
