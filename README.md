@@ -15,4 +15,5 @@ Este código permite controlar dispositivos  através da plataforma Sinric Pro, 
 - 📁WebSockets - [version 2.3.6⬇️](https://downloads.arduino.cc/libraries/github.com/Links2004/WebSockets-2.3.6.zip)
 
 **⛔Problemas para resolver**
-- [ ] [Não funciona em offline](https://github.com/tcastrocna/automacaoResidencial-SinricPro/issues/1)
+- [ ] Não funciona em offline.
+
