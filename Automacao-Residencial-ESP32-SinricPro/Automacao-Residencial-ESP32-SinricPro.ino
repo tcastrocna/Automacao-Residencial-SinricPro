@@ -15,38 +15,35 @@
 
 #include <map>
 
-#define WIFI_SSID    "NOME_WIFI"    //Nome do Wifi do ambiente
-#define WIFI_PASS    "SENHA_WIFI"   //Senha do Wifi do ambiente
-#define APP_KEY       "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"      //Chave do app fornecida pela plataforma
-#define APP_SECRET    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"  //Senha do app fornecida pela plataforma
+//Credenciais da rede WiFi e chaves fornecidas pela plataforma.
+#define WIFI_SSID    "NOME_WIFI"    
+#define WIFI_PASS    "SENHA_WIFI"   
+#define APP_KEY       "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"     
+#define APP_SECRET    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"  
 
 //Definir os IDs de cada Dispositivo, neste caso tem apenas três dispositivos, pois está no plano gratuito.
 #define device_ID_1   "xxxxxxxxxxxxxxxxxxxxxxxx" //Rele1
 #define device_ID_2   "xxxxxxxxxxxxxxxxxxxxxxxx" //Rele2
 #define device_ID_3   "xxxxxxxxxxxxxxxxxxxxxxxx" //Rele3 
-#define device_ID_4   "xxxxxxxxxxxxxxxxxxxxxxxx" //Null
 
-// Definir as entradas no esp32.
-//Saídas dos dispositivos
+// Definir as entradas e saídas nas GPIOs no esp32.
 #define RelayPin1 18  //Rele1 
 #define RelayPin2 19  //Rele2
 #define RelayPin3 23 //Rele3
-#define RelayPin4 05 //Null
 
-//Botões físicos
 #define SwitchPin1 13  //Botão físico do Rele1
 #define SwitchPin2 12  // Botão físico do Rele2
 #define SwitchPin3 14  //Botão fisico do Rele3
-#define SwitchPin4 27  //Null
 
 #define wifiLed   16   //Led indicador de rede, acender ao conectar a rede.
 
-// comente a seguinte linha se você usar interruptores em vez de botões táteis.
+//Comente a seguinte linha se você usar interruptores em vez de botões táteis.
 #define TACTILE_BUTTON 1
 #define BAUD_RATE   9600
 #define DEBOUNCE_TIME 250
 
-typedef struct {      // estrutura para o std :: map abaixo
+//Estrutura para o std :: map abaixo
+typedef struct {     
   int relayPIN;
   int flipSwitchPIN;
 } deviceConfig_t;
@@ -61,8 +58,7 @@ std::map<String, deviceConfig_t> devices = {
     //{deviceId, {relayPIN,  flipSwitchPIN}}
     {device_ID_1, {  RelayPin1, SwitchPin1 }},
     {device_ID_2, {  RelayPin2, SwitchPin2 }},
-    {device_ID_3, {  RelayPin3, SwitchPin3 }},
-    {device_ID_4, {  RelayPin4, SwitchPin4 }}     
+    {device_ID_3, {  RelayPin3, SwitchPin3 }}    
 };
 
 typedef struct {      // struct for the std::map below
