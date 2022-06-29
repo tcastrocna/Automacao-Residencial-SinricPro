@@ -2,7 +2,8 @@
 Este código permite controlar dispositivos  através da plataforma Sinric Pro, onde permite criar até 3 dispositivos de forma gratuita.
 - 📱 Este serviço permite controlador dispositivos através de app Sinric PRO, Google Home e app Amazon Alexa.
 - 🗣️ Por comando de voz através da google assistente e Alexa sem precisar de uma google home mine ou uma echo dot.
-- 🎛️ E por botões físicos.
+- 🎛️ Por botões físicos.
+- 🕹️ E por controle remoto infravermelho.
 
 **🌍Links Úteis:**
 - 🌍[Page Sinric PRO](https://sinric.pro/pt-index.html)
