@@ -3,6 +3,7 @@
        #define NODEBUG_WEBSOCKETS
        #define NDEBUG
 #endif 
+
 #include <Arduino.h>
 #ifdef ESP8266 
        #include <ESP8266WiFi.h>
@@ -10,169 +11,217 @@
 #ifdef ESP32   
        #include <WiFi.h>
 #endif
+#include <IRremote.hpp>
 #include "SinricPro.h"
 #include "SinricProSwitch.h"
 
-#include <map>
+//Definir nome e senha da rede WiFi e chaves de autenticação da platadorma Sinric Pro.
+#define NOME_WIFI           "xxxxxxxx"    
+#define SENHA_WIFI          "xxxxxxxx"
+#define CHAVE_APP           "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"      
+#define SENHA_APP           "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"   
 
-//Credenciais da rede WiFi e chaves fornecidas pela plataforma.
-#define WIFI_SSID    "NOME_WIFI"    
-#define WIFI_PASS    "SENHA_WIFI"   
-#define APP_KEY       "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"     
-#define APP_SECRET    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"  
+//Definir os IDs dos dispositovos criados na plataforma Sinric Pro.
+#define DEVICE_ID_1    "xxxxxxxxxxxxxxxxxxxxxxxx"
+#define DEVICE_ID_2    "xxxxxxxxxxxxxxxxxxxxxxxx"
+#define DEVICE_ID_3    "xxxxxxxxxxxxxxxxxxxxxxxx"
 
-//Definir os IDs de cada Dispositivo, neste caso tem apenas três dispositivos, pois está no plano gratuito.
-#define device_ID_1   "xxxxxxxxxxxxxxxxxxxxxxxx" //Rele1
-#define device_ID_2   "xxxxxxxxxxxxxxxxxxxxxxxx" //Rele2
-#define device_ID_3   "xxxxxxxxxxxxxxxxxxxxxxxx" //Rele3 
+//Definir os pinos de saídas e entrada da placa.
+#define RELAY_PIN_1      18       //Relé Iluminação 1.
+#define RELAY_PIN_2      19       //Relé Iluminação 2.
+#define RELAY_PIN_3      23       //Relé Ventilador.
+#define BUTTON_PIN_1     13       //Botão Iluminação 1.
+#define BUTTON_PIN_2     12       //Botão Iluminação 2.
+#define BUTTON_PIN_3     14       //Botão Ventilador.
+#define WIFI_LED         17       //Led indicador de rede.
+#define RECV_IR          27       //Receptor Infravermelho.
 
-// Definir as entradas e saídas nas GPIOs no esp32.
-#define RelayPin1 18  //Rele1 
-#define RelayPin2 19  //Rele2
-#define RelayPin3 23 //Rele3
+#define BAUD_RATE  9600          
 
-#define SwitchPin1 13  //Botão físico do Rele1
-#define SwitchPin2 12  // Botão físico do Rele2
-#define SwitchPin3 14  //Botão fisico do Rele3
+//Código Hexadecimal teclas do controle remoto
+#define IR_BUTTON_1 0xEA15BD00 //Relé Iluminação 1.
+#define IR_BUTTON_2 0xE916BD00 //Relé Iluminação 2.
+#define IR_BUTTON_3 0xE817BD00 //Relé Ventilador.
+#define IR_OFF_ALL 0xFE01BD00 //Desliga todos.
 
-#define wifiLed   16   //Led indicador de rede, acender ao conectar a rede.
+//Estado de energia das saídas
+bool POWER_STATE_1 = false;
+bool POWER_STATE_2 = false;
+bool POWER_STATE_3 = false;
 
-//Comente a seguinte linha se você usar interruptores em vez de botões táteis.
-#define TACTILE_BUTTON 1
-#define BAUD_RATE   9600
-#define DEBOUNCE_TIME 250
-
-//Estrutura para o std :: map abaixo
-typedef struct {     
-  int relayPIN;
-  int flipSwitchPIN;
-} deviceConfig_t;
-
-
-// esta é a configuração principal
-// insira em seu deviceId, o PIN para Relay e o PIN para flipSwitch
-// isso pode ser até N dispositivos ... dependendo de quantos pinos está disponível em seu dispositivo;)
-// agora temos 4 devicesIds indo para 4 relés e 4 interruptores flip para alternar o relé manualmente
-
-std::map<String, deviceConfig_t> devices = {
-    //{deviceId, {relayPIN,  flipSwitchPIN}}
-    {device_ID_1, {  RelayPin1, SwitchPin1 }},
-    {device_ID_2, {  RelayPin2, SwitchPin2 }},
-    {device_ID_3, {  RelayPin3, SwitchPin3 }}    
-};
-
-typedef struct {      // struct for the std::map below
-  String deviceId;
-  bool lastFlipSwitchState;
-  unsigned long lastFlipSwitchChange;
-} flipSwitchConfig_t;
-
-std::map<int, flipSwitchConfig_t> flipSwitches;   // este mapa é usado para mapear PINs flipSwitch para deviceId e lidar com verificações de estado de debounce e última flipSwitch
-                                                  // será configurado na função "setupFlipSwitches", usando informações do mapa de dispositivos
-void setupRelays() { 
-  for (auto &device : devices) {           // para cada dispositivo (relé, combinação flipSwitch)
-    int relayPIN = device.second.relayPIN; // obter o pino de retransmissão
-    pinMode(relayPIN, OUTPUT);             // define o pino do relé para OUTPUT
-    digitalWrite(relayPIN, HIGH);          //define o estado do relé para HIGH, assim ao ligar os relés permanecem desligados
-  }
+//Controle através do aplicativo.
+bool onPowerState1(const String &deviceId, bool &state) {
+  Serial.printf("Device %s turned %s (via SinricPro) \r\n", deviceId.c_str(), state?"on":"off");
+  POWER_STATE_1 = state;
+  digitalWrite(RELAY_PIN_1, POWER_STATE_1?LOW:HIGH);
+  return true;
 }
-
-void setupFlipSwitches() {
-  for (auto &device : devices)  {                     // para cada dispositivo (combinação relé / flipSwitch)
-    flipSwitchConfig_t flipSwitchConfig;              // cria uma nova configuração flipSwitch
-
-    flipSwitchConfig.deviceId = device.first;         // definir o deviceId
-    flipSwitchConfig.lastFlipSwitchChange = 0;        // definir o tempo de debounce
-    flipSwitchConfig.lastFlipSwitchState = true;     // defina lastFlipSwitchState como false (LOW) -
-
-    int flipSwitchPIN = device.second.flipSwitchPIN;  // obtenha o flipSwitchPIN
-
-    flipSwitches[flipSwitchPIN] = flipSwitchConfig;   // salve a configuração flipSwitch no mapa flipSwitches
-    pinMode(flipSwitchPIN, INPUT_PULLUP);                   // defina o pino flipSwitch para INPUT
-  }
+bool onPowerState2(const String &deviceId, bool &state) {
+  Serial.printf("Device %s turned %s (via SinricPro) \r\n", deviceId.c_str(), state?"on":"off");
+  POWER_STATE_2 = state;
+  digitalWrite(RELAY_PIN_2, POWER_STATE_2?LOW:HIGH);
+  return true;
 }
-
-bool onPowerState(String deviceId, bool &state)
-{
-  Serial.printf("%s: %s\r\n", deviceId.c_str(), state ? "on" : "off");
-  int relayPIN = devices[deviceId].relayPIN; // obtenha o pino de retransmissão para o dispositivo correspondente
-  digitalWrite(relayPIN, !state);             // define o novo estado do relé
+bool onPowerState3(const String &deviceId, bool &state) {
+  Serial.printf("Device %s turned %s (via SinricPro) \r\n", deviceId.c_str(), state?"on":"off");
+  POWER_STATE_3 = state;
+  digitalWrite(RELAY_PIN_3, POWER_STATE_3?LOW:HIGH);
   return true;
 }
 
-void handleFlipSwitches() {
-  unsigned long actualMillis = millis();                                          // get actual millis
-  for (auto &flipSwitch : flipSwitches) {                                         // para cada flipSwitch no mapa flipSwitches
-    unsigned long lastFlipSwitchChange = flipSwitch.second.lastFlipSwitchChange;  // obtém o carimbo de data / hora quando flipSwitch foi pressionado da última vez (usado para eliminar / limitar eventos)
 
-    if (actualMillis - lastFlipSwitchChange > DEBOUNCE_TIME) {                    // se o tempo for > tempo de debounce ...
-
-      int flipSwitchPIN = flipSwitch.first;                                       // obtém o pino flipSwitch da configuração
-      bool lastFlipSwitchState = flipSwitch.second.lastFlipSwitchState;           // obtenha o lastFlipSwitchState
-      bool flipSwitchState = digitalRead(flipSwitchPIN);                          // lê o estado flipSwitch atual
-      if (flipSwitchState != lastFlipSwitchState) {                               // se o flipSwitchState mudou ...
-#ifdef TACTILE_BUTTON
-        if (flipSwitchState) {                                                    // se o botão tátil for pressionado 
-#endif      
-          flipSwitch.second.lastFlipSwitchChange = actualMillis;                  // atualiza a hora do lastFlipSwitchChange
-          String deviceId = flipSwitch.second.deviceId;                           // obtenha o deviceId da configuração
-          int relayPIN = devices[deviceId].relayPIN;                              // obtém o relayPIN da configuração
-          bool newRelayState = !digitalRead(relayPIN);                            // define o novo estado do relé
-          digitalWrite(relayPIN, newRelayState);                                  // define o relé para o novo estado
-
-          SinricProSwitch &mySwitch = SinricPro[deviceId];                        // obter o dispositivo Switch do SinricPro
-          mySwitch.sendPowerStateEvent(!newRelayState);                            // envie o evento
-#ifdef TACTILE_BUTTON
-        }
-#endif      
-        flipSwitch.second.lastFlipSwitchState = flipSwitchState;                  // atualizar lastFlipSwitchState
-      }
+//Função para controle através de botões físicos e controle remoto IR
+void ligaDesligaRele(int rele){
+    switch (rele)
+    {
+    case 1:
+    if(POWER_STATE_1 == false){
+      digitalWrite(RELAY_PIN_1, LOW);
+      POWER_STATE_1 = !POWER_STATE_1;
+      SinricProSwitch& mySwitch1 = SinricPro[DEVICE_ID_1];
+      mySwitch1.sendPowerStateEvent(POWER_STATE_1);     
+      Serial.println("Relé 1 Ligado.");
     }
-  }
+    else{
+      digitalWrite(RELAY_PIN_1, HIGH);
+      POWER_STATE_1 = !POWER_STATE_1;
+      SinricProSwitch& mySwitch1 = SinricPro[DEVICE_ID_1];
+      mySwitch1.sendPowerStateEvent(POWER_STATE_1);
+      Serial.println("Relé 1 Desligado.");
+    }
+    break;
+
+    case 2:
+    if(POWER_STATE_2 == false){
+      digitalWrite(RELAY_PIN_2, LOW);
+      POWER_STATE_2 = !POWER_STATE_2;
+      SinricProSwitch& mySwitch2 = SinricPro[DEVICE_ID_2];
+      mySwitch2.sendPowerStateEvent(POWER_STATE_2);     
+      Serial.println("Relé 2 Ligado.");
+    }
+    else{
+      digitalWrite(RELAY_PIN_2, HIGH);
+      POWER_STATE_2 = !POWER_STATE_2;
+      SinricProSwitch& mySwitch2 = SinricPro[DEVICE_ID_2];
+      mySwitch2.sendPowerStateEvent(POWER_STATE_2);
+      Serial.println("Relé 2 Desligado.");
+    }
+    break;
+
+    case 3:
+    if(POWER_STATE_3 == false){
+      digitalWrite(RELAY_PIN_3, LOW);
+      POWER_STATE_3 = !POWER_STATE_3;
+      SinricProSwitch& mySwitch3 = SinricPro[DEVICE_ID_3];
+      mySwitch3.sendPowerStateEvent(POWER_STATE_3);     
+      Serial.println("Relé 3 Ligado.");
+    }
+    else{
+      digitalWrite(RELAY_PIN_3, HIGH);
+      POWER_STATE_3 = !POWER_STATE_3;
+      SinricProSwitch& mySwitch3 = SinricPro[DEVICE_ID_3];
+      mySwitch3.sendPowerStateEvent(POWER_STATE_3);
+      Serial.println("Relé 3 Desligado.");
+    }
+    break;
+    default: break;
+    }
 }
 
-void setupWiFi()
-{
-  Serial.printf("\r\n[Wifi]: Connecting");
-  WiFi.begin(WIFI_SSID, WIFI_PASS);
+//Função desligar todos, desliga todos os equipamentos ao precionar o botão off-all
+void desligarTodos(){
+  POWER_STATE_1 = false; digitalWrite(RELAY_PIN_1, HIGH); SinricProSwitch& mySwitch1 = SinricPro[DEVICE_ID_1]; mySwitch1.sendPowerStateEvent(POWER_STATE_1); delay(100);
+  POWER_STATE_2 = false; digitalWrite(RELAY_PIN_2, HIGH); SinricProSwitch& mySwitch2 = SinricPro[DEVICE_ID_2]; mySwitch2.sendPowerStateEvent(POWER_STATE_2); delay(100);
+  POWER_STATE_3 = false; digitalWrite(RELAY_PIN_3, HIGH); SinricProSwitch& mySwitch3 = SinricPro[DEVICE_ID_3]; mySwitch3.sendPowerStateEvent(POWER_STATE_3); delay(100);
+  Serial.println("Todos os relés Desligados.");
+}
 
-  while (WiFi.status() != WL_CONNECTED)
-  {
+//Função para controle manual através de botões físicos
+void controleManual(){
+    if(digitalRead(BUTTON_PIN_1) == LOW){
+        delay(200);
+        ligaDesligaRele(1);
+    }
+    else if(digitalRead(BUTTON_PIN_2) == LOW){
+        delay(200);
+        ligaDesligaRele(2);
+    }
+    else if(digitalRead(BUTTON_PIN_3) == LOW){
+        delay(200);
+        ligaDesligaRele(3);
+    }
+}
+
+//Função para controle através do controle remoto infravermelho.
+void controleRemoto(){
+  if (IrReceiver.decode()) {
+      switch(IrReceiver.decodedIRData.decodedRawData){
+        case IR_BUTTON_1: ligaDesligaRele(1);  break;
+        case IR_BUTTON_2: ligaDesligaRele(2);  break;
+        case IR_BUTTON_3: ligaDesligaRele(3);  break;
+        case IR_OFF_ALL:  desligarTodos();     break;
+
+        default: break;
+        }   
+        Serial.println(IrReceiver.decodedIRData.decodedRawData, HEX);    
+        IrReceiver.resume();
+  } 
+}
+
+//Função de configuração para conexão WiFi
+void setupWiFi() {
+  Serial.printf("\r\n[Wifi]: Conectando");
+  WiFi.begin(NOME_WIFI, SENHA_WIFI);
+
+  while (WiFi.status() != WL_CONNECTED) {
     Serial.printf(".");
     delay(250);
-  }
-  //Quando conectar a internet o led acende.     
-  digitalWrite(wifiLed, HIGH);
-  Serial.printf("connected!\r\n[WiFi]: IP-Address is %s\r\n", WiFi.localIP().toString().c_str());
+  }  
+  Serial.printf("Conectado!\r\n[WiFi]: Endereço IP é %s\r\n", WiFi.localIP().toString().c_str());
 }
 
-void setupSinricPro()
-{
-  for (auto &device : devices)
-  {
-    const char *deviceId = device.first.c_str();
-    SinricProSwitch &mySwitch = SinricPro[deviceId];
-    mySwitch.onPowerState(onPowerState);
-  }
+//Função para configuração do SinricPro
+void setupSinricPro() {
+ //Adiciona o dispositivo ao SinricPro
+  SinricProSwitch& mySwitch1 = SinricPro[DEVICE_ID_1];
+  mySwitch1.onPowerState(onPowerState1);
 
-  SinricPro.begin(APP_KEY, APP_SECRET);
-  SinricPro.restoreDeviceStates(true);
+  SinricProSwitch& mySwitch2 = SinricPro[DEVICE_ID_2];
+  mySwitch2.onPowerState(onPowerState2);
+
+  SinricProSwitch& mySwitch3 = SinricPro[DEVICE_ID_3];
+  mySwitch3.onPowerState(onPowerState3);
+
+  //Configurar SinricPro
+  SinricPro.onConnected([](){ Serial.printf("Connected to SinricPro\r\n"); }); 
+  SinricPro.onDisconnected([](){ Serial.printf("Disconnected from SinricPro\r\n"); });
+  SinricPro.begin(CHAVE_APP, SENHA_APP);
 }
 
-void setup()
-{
-  Serial.begin(BAUD_RATE);
+//Função de configurações.
+void setup() {
+  pinMode(BUTTON_PIN_1, INPUT_PULLUP);
+  pinMode(BUTTON_PIN_2, INPUT_PULLUP);
+  pinMode(BUTTON_PIN_3, INPUT_PULLUP);
 
-  pinMode(wifiLed, OUTPUT); //definir led indicador como saída.
- 
-  setupRelays();
-  setupFlipSwitches();
+  pinMode(RELAY_PIN_1, OUTPUT); 
+  pinMode(RELAY_PIN_2, OUTPUT); 
+  pinMode(RELAY_PIN_3, OUTPUT); 
+
+  digitalWrite(RELAY_PIN_1, !POWER_STATE_1);
+  digitalWrite(RELAY_PIN_2, !POWER_STATE_2);
+  digitalWrite(RELAY_PIN_3, !POWER_STATE_3);
+  
+  digitalWrite(WIFI_LED, LOW);
+
+  IrReceiver.begin(RECV_IR, ENABLE_LED_FEEDBACK);
+  Serial.begin(BAUD_RATE); Serial.printf("\r\n\r\n");
   setupWiFi();
   setupSinricPro();
 }
 
-void loop()
-{
+void loop() {
+  controleManual();
+  controleRemoto();
   SinricPro.handle();
-  handleFlipSwitches();
 }
